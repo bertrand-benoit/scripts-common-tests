@@ -15,8 +15,11 @@ ERROR_MESSAGE_EXITS_SCRIPT=0
 . "$1"
 
 ## Defines some constants.
-declare -r ERROR_TEST_FAILURE=200
+currentDir=$( dirname "$( which "$0" )" )
+declare -r miscDir="$currentDir/misc"
+declare -r daemonSample="$miscDir/daemonSample"
 
+declare -r ERROR_TEST_FAILURE=200
 
 ## Defines some functions.
 # usage: testFail <message>
@@ -313,8 +316,7 @@ function testLinesFeature() {
   exitingTests "lines"
 }
 
-# PID file fature Tests.
-# Tests PID file feature, without the Daemon layer which is tested elsewhere.
+# PID file feature Tests, without the Daemon layer which is tested elsewhere.
 function testPidFileFeature() {
   local _pidFile _processName
   enteringTests "pidFiles"
@@ -353,6 +355,47 @@ function testPidFileFeature() {
   exitingTests "pidFiles"
 }
 
+# Tests Deaemon feature.
+function testDaemonFeature() {
+  local _pidFile _daemonPath _daemonName _daemonCompletePath
+  local _failureErrorMessage="Daemon feature is broken"
+
+  enteringTests "daemon"
+
+  export PID_DIR="$DEFAULT_PID_DIR/testDaemonFeature/_pids"
+  _daemonDirPath="$DEFAULT_TMP_DIR/testDaemonFeature"
+  _daemonName="myDaemonTest.sh"
+  _daemonCompletePath="$_daemonDirPath/$_daemonName"
+
+  # Environment creation.
+  updateStructure "$_daemonDirPath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  rm -f "$_daemonCompletePath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  cp "$daemonSample" "$_daemonCompletePath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  chmod +x "$_daemonCompletePath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+
+  writeMessage "Checking the status of the Daemon ... expected result: NOT running"
+  "$_daemonCompletePath" -T || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+
+  writeMessage "Requesting to stop the Daemon ... (warning can occur because of the process killing) expected result: NOT running"
+  "$_daemonCompletePath" -K || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+
+  writeMessage "Starting the Daemon ..."
+  "$_daemonCompletePath" -S || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  sleep 2
+
+  writeMessage "Checking the status of the Daemon ... expected result: running"
+  "$_daemonCompletePath" -T || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+
+  writeMessage "Requesting to stop the Daemon ... expected result: NOT running"
+  "$_daemonCompletePath" -K || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+
+  writeMessage "Checking the status of the Daemon ... expected result: NOT running"
+  "$_daemonCompletePath" -T || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+
+  unset PID_DIR
+  exitingTests "daemon"
+}
+
 ## Run tests.
 testLoggerFeature
 testLoggerRobustness
@@ -364,5 +407,6 @@ testCheckPathFeature
 testConfigurationFileFeature
 testPidFileFeature
 testLinesFeature
+testDaemonFeature
 
 writeMessage "All Tests are successful !"
