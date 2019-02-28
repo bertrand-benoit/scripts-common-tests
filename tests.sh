@@ -9,8 +9,10 @@ VERBOSE=1
 CATEGORY="tests:general"
 ERROR_MESSAGE_EXITS_SCRIPT=0
 
-currentDir=$( dirname "$( which "$0" )" )
-source "$currentDir/../utilities.sh"
+# Ensures utilities path has been specified, and sources it.
+[ $# -lt 1 ] && echo "Usage: $0 <utilities script path>" >&2 && exit 1
+[ ! -f "$1" ] && echo "Specified utilities script path '$1' does NOT exist." >&2 && exit 1
+. "$1"
 
 ## Defines some constants.
 declare -r ERROR_TEST_FAILURE=200
