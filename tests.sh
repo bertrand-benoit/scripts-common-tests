@@ -5,14 +5,13 @@
 ## Version: 0.1
 
 DEBUG_UTILITIES=1
-VERBOSE=1
 CATEGORY="tests:general"
 ERROR_MESSAGE_EXITS_SCRIPT=0
+LOG_CONSOLE_OFF=1
 
-# Ensures utilities path has been specified, and sources it.
-[ $# -lt 1 ] && echo "Usage: $0 <utilities script path>" >&2 && exit 1
-[ ! -f "$1" ] && echo "Specified utilities script path '$1' does NOT exist." >&2 && exit 1
-. "$1"
+# Ensures utilities path has been defined, and sources it.
+[ -z "${SCRIPTS_COMMON_PATH:-}" ] && echo "SCRIPTS_COMMON_PATH environment variable must be defined." >&2 && exit 1
+. "$SCRIPTS_COMMON_PATH"
 
 ## Defines some constants.
 currentDir=$( dirname "$( which "$0" )" )
@@ -20,21 +19,6 @@ declare -r miscDir="$currentDir/misc"
 declare -r daemonSample="$miscDir/daemonSample"
 
 declare -r ERROR_TEST_FAILURE=200
-
-## Defines some functions.
-# usage: testFail <message>
-function testFail() {
-  errorMessage "$1" "$ERROR_TEST_FAILURE"
-  exit "$ERROR_TEST_FAILURE"
-}
-
-# usage: assertValue <value> <wanted value>
-function assertValue() {
-  local _value="$1" _wantedValue="$2"
-
-  info "Checking if value '$_value' is equal to '$_wantedValue' ..."
-  [[ "$_value" == "$_wantedValue" ]]
-}
 
 # usage: enteringTests <test category>
 function enteringTests() {
@@ -54,10 +38,10 @@ function exitingTests() {
 
 ## Define Tests functions.
 # Logger feature Tests.
-function testLoggerFeature() {
+testLoggerFeature() {
   enteringTests "logger"
 
-  writeMessage "Simple message tests (should not have prefix)"
+  info "Simple message tests (should not have prefix)"
   info "Info message test"
   warning "Warning message test"
   errorMessage "Error message test" -1 # -1 to avoid automatic exit of the script
@@ -66,7 +50,7 @@ function testLoggerFeature() {
 }
 
 # Robustness Tests.
-function testLoggerRobustness() {
+testLoggerRobustness() {
   local _logLevel _message _sameLine _exitStatus
 
   enteringTests "robustness"
@@ -96,50 +80,50 @@ function testLoggerRobustness() {
 }
 
 # Environment check feature Tests.
-function testEnvironmentCheckFeature() {
+testEnvironmentCheckFeature() {
   local _failureErrorMessage="Environment check feature is broken"
 
   enteringTests "envCheck"
 
-  writeMessageSL "Checking if user is root ... "
+  info "Checking if user is root ... "
   isRootUser && echo "YES" || echo "NO"
 
-  writeMessageSL "Checking if GNU which is installed ... "
+  info "Checking if GNU which is installed ... "
   checkGNUWhich && echo "YES" || echo "NO"
 
-  writeMessage "Checking environment ... "
-  checkEnvironment
+  info "Checking environment ... "
+  assertTrue checkEnvironment
 
-  writeMessage "Checking LSB ... "
+  info "Checking LSB ... "
   checkLSB
 
-  writeMessage "Checking Locale with no utf-8 LANG ... this must produce a WARNING."
-  LANG=en_GB checkLocale && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking Locale with no utf-8 LANG ... this must produce a WARNING."
+  LANG=en_GB checkLocale && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking Locale with not installed/existing utf-8 LANG ... this must produce a WARNING."
-  LANG=zz_ZZ.UTF-8 checkLocale && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking Locale with not installed/existing utf-8 LANG ... this must produce a WARNING."
+  LANG=zz_ZZ.UTF-8 checkLocale && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking Locale with a good LANG defined to en_GB.UTF-8."
-  LANG=en_GB.UTF-8 checkLocale || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking Locale with a good LANG defined to en_GB.UTF-8."
+  LANG=en_GB.UTF-8 checkLocale || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking Locale with a good LANG defined to en_GB.utf8."
-  LANG=en_GB.utf8 checkLocale || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking Locale with a good LANG defined to en_GB.utf8."
+  LANG=en_GB.utf8 checkLocale || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   exitingTests "envCheck"
 }
 
 # Conditional Tests.
-function testConditionalBehaviour() {
+testConditionalBehaviour() {
   enteringTests "conditional"
 
   # Script should NOT break because of the pipe status ...
-  [ 0 -gt 1 ] || writeMessage "fake test ..."
+  [ 0 -gt 1 ] || info "fake test ..."
 
   exitingTests "conditional"
 }
 
 # Version feature Tests.
-function testVersionFeature() {
+testVersionFeature() {
   local _fileWithVersion _version _fakeVersion
   enteringTests "version"
 
@@ -147,34 +131,34 @@ function testVersionFeature() {
   _version=$( getVersion "$_fileWithVersion" )
   _fakeVersion="999.999.999"
 
-  writeMessage "scripts-common Utilities version: $_version"
-  writeMessage "scripts-common Utilities detailed version: $( getDetailedVersion "$_version" "$currentDir/.." )"
+  info "scripts-common Utilities version: $_version"
+  info "scripts-common Utilities detailed version: $( getDetailedVersion "$_version" "$currentDir/.." )"
 
-  writeMessageSL "Checking getDetailedVersion on NOT existing directory"
-  getDetailedVersion "$_version" "$currentDir/NotExistingDirectory" && testFail "Version feature is broken" $ERROR_TEST_FAILURE
+  info "Checking getDetailedVersion on NOT existing directory"
+  getDetailedVersion "$_version" "$currentDir/NotExistingDirectory" && fail "Version feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking if $_version is greater than $_fakeVersion ... (should NOT be the case)"
-  isVersionGreater "$_version" "$_fakeVersion" && testFail "Version feature is broken" $ERROR_TEST_FAILURE
+  info "Checking if $_version is greater than $_fakeVersion ... (should NOT be the case)"
+  isVersionGreater "$_version" "$_fakeVersion" && fail "Version feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking if $_fakeVersion is greater than $_version ... (should be the case)"
-  ! isVersionGreater "$_fakeVersion" "$_version" && testFail "Version feature is broken" $ERROR_TEST_FAILURE
+  info "Checking if $_fakeVersion is greater than $_version ... (should be the case)"
+  ! isVersionGreater "$_fakeVersion" "$_version" && fail "Version feature is broken" $ERROR_TEST_FAILURE
 
   exitingTests "version"
 }
 
 # Time feature Tests.
-function testTimeFeature() {
+testTimeFeature() {
   enteringTests "time"
 
   info "Testing time feature"
   initializeStartTime
   sleep 1
-  writeMessage "Uptime: $( getUptime )"
+  info "Uptime: $( getUptime )"
 
   exitingTests "time"
 }
 
-function testCheckPathFeature() {
+testCheckPathFeature() {
   local _failureErrorMessage="Check path feature is broken"
   local _checkPathRootDir="$DEFAULT_TMP_DIR/checkPathRootDir"
   local _dataFileName="myFile.data"
@@ -189,70 +173,70 @@ function testCheckPathFeature() {
   MODE_CHECK_CONFIG=1
 
   # Limit tests, on not existing files.
-  writeMessage "Checking NOT existing directory, is empty (should answer NO)."
-  isEmptyDirectory "$_checkPathRootDir" && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking NOT existing directory, is empty (should answer NO)."
+  isEmptyDirectory "$_checkPathRootDir" && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  updateStructure "$_checkPathRootDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  updateStructure "$_checkPathRootDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking NOT existing Data file."
-  checkDataFile "$_checkPathRootDir/$_dataFileName" && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking NOT existing Data file."
+  checkDataFile "$_checkPathRootDir/$_dataFileName" && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking NOT existing Binary file."
-  checkBin "$_checkPathRootDir/$_binFileName" && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking NOT existing Binary file."
+  checkBin "$_checkPathRootDir/$_binFileName" && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking NOT existing Path."
-  checkPath "$_checkPathRootDir/$_subPathDir" && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking NOT existing Path."
+  checkPath "$_checkPathRootDir/$_subPathDir" && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   # Normal situation.
-  touch "$_checkPathRootDir/$_dataFileName" "$_checkPathRootDir/$_binFileName" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  chmod +x "$_checkPathRootDir/$_binFileName" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  updateStructure "$_checkPathRootDir/$_subPathDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  touch "$_checkPathRootDir/$_dataFileName" "$_checkPathRootDir/$_binFileName" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  chmod +x "$_checkPathRootDir/$_binFileName" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  updateStructure "$_checkPathRootDir/$_subPathDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking existing directory is empty."
-  isEmptyDirectory "$_checkPathRootDir/$_subPathDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking existing directory is empty."
+  isEmptyDirectory "$_checkPathRootDir/$_subPathDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking existing Data file."
-  checkDataFile "$_checkPathRootDir/$_dataFileName" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking existing Data file."
+  checkDataFile "$_checkPathRootDir/$_dataFileName" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking existing Binary file."
-  checkBin "$_checkPathRootDir/$_binFileName" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking existing Binary file."
+  checkBin "$_checkPathRootDir/$_binFileName" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking existing Path."
-  checkPath "$_checkPathRootDir/$_subPathDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking existing Path."
+  checkPath "$_checkPathRootDir/$_subPathDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   # Absolute/Relative path and completePath.
-  writeMessage "Checking isAbsolutePath function."
-  isAbsolutePath "$_checkPathRootDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  isAbsolutePath "$_subPathDir" && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking isAbsolutePath function."
+  isAbsolutePath "$_checkPathRootDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  isAbsolutePath "$_subPathDir" && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking isRelativePath function."
-  isRelativePath "$_checkPathRootDir" && testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  isRelativePath "$_subPathDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking isRelativePath function."
+  isRelativePath "$_checkPathRootDir" && fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  isRelativePath "$_subPathDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking buildCompletePath function."
+  info "Checking buildCompletePath function."
   # Absolute path stays unchanged.
-  assertValue "$( buildCompletePath "$_checkPathRootDir" )" "$_checkPathRootDir" ]] || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  assertEquals "$( buildCompletePath "$_checkPathRootDir" )" "$_checkPathRootDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   # Relative path stays unchanged, if no prepend arguments is specified.
-  assertValue "$( buildCompletePath "$_subPathDir" )" "$_subPathDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  assertValue "$( buildCompletePath "$_subPathDir" "$_checkPathRootDir" )" "$_subPathDir" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  assertEquals "$( buildCompletePath "$_subPathDir" )" "$_subPathDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  assertEquals "$( buildCompletePath "$_subPathDir" "$_checkPathRootDir" )" "$_subPathDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   # Relative path must be fully completed, with all prepend arguments.
-  assertValue "$( buildCompletePath "$_subPathDir" "$_checkPathRootDir" 1 )" "$_checkPathRootDir/$_subPathDir" ]] || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  assertEquals "$( buildCompletePath "$_subPathDir" "$_checkPathRootDir" 1 )" "$_checkPathRootDir/$_subPathDir" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   # Special situation: HOME subsitution.
-  writeMessage "Checking buildCompletePath function, for ~ substitution with HOME environment variable."
-  assertValue "$( buildCompletePath "~/$_homeRelativePath" )" "$HOME/$_homeRelativePath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking buildCompletePath function, for ~ substitution with HOME environment variable."
+  assertEquals "$( buildCompletePath "~/$_homeRelativePath" )" "$HOME/$_homeRelativePath" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   # Very important to switch off this mode to keep on testing others features.
   MODE_CHECK_CONFIG=0
 
   # checkAndFormatPath Tests.
-  writeMessage "Checking checkAndFormatPath function."
+  info "Checking checkAndFormatPath function."
   # N.B.: at end, use a wildcard instead of the ending 'ir' part.
   _pathsToFormatBefore="$_subPathDir:~/$_homeRelativePath:${_subPathDir/ir/}*"
   _pathsToFormatAfter="$_checkPathRootDir/$_subPathDir:$HOME/$_homeRelativePath:$_checkPathRootDir/$_subPathDir"
-  assertValue "$( checkAndFormatPath "$_pathsToFormatBefore" "$_checkPathRootDir" )" "$_pathsToFormatAfter" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  assertEquals "$( checkAndFormatPath "$_pathsToFormatBefore" "$_checkPathRootDir" )" "$_pathsToFormatAfter" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   # Very important to switch off this mode to keep on testing others features.
   MODE_CHECK_CONFIG=0
@@ -261,26 +245,26 @@ function testCheckPathFeature() {
 }
 
 # Configuration file feature Tests.
-function testConfigurationFileFeature() {
+testConfigurationFileFeature() {
   local _configKey="my.config.key"
   local _configValue="my Value"
   local _configFile="$DEFAULT_TMP_DIR/localConfigurationFile.conf"
 
   enteringTests "config"
 
-  writeMessage "A configuration key '$CONFIG_NOT_FOUND' should happen."
+  info "A configuration key '$CONFIG_NOT_FOUND' should happen."
 
   # To avoid error when configuration key is not found, switch on this mode.
   MODE_CHECK_CONFIG=1
 
   # No configuration file defined, it should not be found.
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
-  assertValue "$LAST_READ_CONFIG" "$CONFIG_NOT_FOUND" || testFail "Configuration feature is broken" $ERROR_TEST_FAILURE
+  assertEquals "$LAST_READ_CONFIG" "$CONFIG_NOT_FOUND" || fail "Configuration feature is broken" $ERROR_TEST_FAILURE
 
   # TODO: check all other kind of $CONFIG_TYPE_XX
 
   # Create a configuration file.
-  writeMessage "Creating the temporary configuration file '$_configFile', and configuration key should then be found."
+  info "Creating the temporary configuration file '$_configFile', and configuration key should then be found."
 cat > $_configFile <<EOF
 $_configKey="$_configValue"
 EOF
@@ -288,7 +272,7 @@ EOF
   CONFIG_FILE="$_configFile"
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
   info "$LAST_READ_CONFIG"
-  assertValue "$LAST_READ_CONFIG" "$_configValue" || testFail "Configuration feature is broken" $ERROR_TEST_FAILURE
+  assertEquals "$LAST_READ_CONFIG" "$_configValue" || fail "Configuration feature is broken" $ERROR_TEST_FAILURE
 
   # Very important to switch off this mode to keep on testing others features.
   MODE_CHECK_CONFIG=0
@@ -297,7 +281,7 @@ EOF
 }
 
 # Lines feature Tests.
-function testLinesFeature() {
+testLinesFeature() {
   local _fileToCheck _fromLine _toLine _result
   _fileToCheck="$0"
   _fromLine=4
@@ -306,18 +290,18 @@ function testLinesFeature() {
   enteringTests "lines"
 
   # TODO: creates a dedicated test file, and ensures the result ... + test all limit cases
-  writeMessage "Getting lines of file '$_fileToCheck', from line '$_fromLine'"
-  _result=$( getLastLinesFromN "$_fileToCheck" "$_fromLine" ) || testFail "Lines feature is broken" $ERROR_TEST_FAILURE
+  info "Getting lines of file '$_fileToCheck', from line '$_fromLine'"
+  _result=$( getLastLinesFromN "$_fileToCheck" "$_fromLine" ) || fail "Lines feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "Getting lines of file '$_fileToCheck', from line '$_fromLine', to line '$_toLine'"
-  _result=$( getLinesFromNToP "$_fileToCheck" "$_fromLine" "$_toLine" ) || testFail "Lines feature is broken" $ERROR_TEST_FAILURE
-  [ "$( echo "$_result" |wc -l )" -ne $((_toLine - _fromLine + 1)) ] && testFail "Lines feature is broken" $ERROR_TEST_FAILURE
+  info "Getting lines of file '$_fileToCheck', from line '$_fromLine', to line '$_toLine'"
+  _result=$( getLinesFromNToP "$_fileToCheck" "$_fromLine" "$_toLine" ) || fail "Lines feature is broken" $ERROR_TEST_FAILURE
+  [ "$( echo "$_result" |wc -l )" -ne $((_toLine - _fromLine + 1)) ] && fail "Lines feature is broken" $ERROR_TEST_FAILURE
 
   exitingTests "lines"
 }
 
 # PID file feature Tests, without the Daemon layer which is tested elsewhere.
-function testPidFileFeature() {
+testPidFileFeature() {
   local _pidFile _processName
   enteringTests "pidFiles"
 
@@ -326,29 +310,29 @@ function testPidFileFeature() {
 
   # Limit tests, on not existing PID file.
   rm -f "$_pidFile"
-  writeMessage "deletePIDFile on not existing file, must NOT fail"
-  deletePIDFile "$_pidFile" || testFail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "deletePIDFile on not existing file, must NOT fail"
+  deletePIDFile "$_pidFile" || fail "PID files feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "getPIDFromFile with a not existing file, must produce an ERROR"
-  getPIDFromFile "$_pidFile" && testFail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "getPIDFromFile with a not existing file, must produce an ERROR"
+  getPIDFromFile "$_pidFile" && fail "PID files feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "getProcessNameFromFile with a not existing file, must produce an ERROR"
-  getProcessNameFromFile "$_pidFile" && testFail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "getProcessNameFromFile with a not existing file, must produce an ERROR"
+  getProcessNameFromFile "$_pidFile" && fail "PID files feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "isRunningProcess with a not existing file, must produce an ERROR"
-  isRunningProcess "$_pidFile" "$0" && testFail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "isRunningProcess with a not existing file, must produce an ERROR"
+  isRunningProcess "$_pidFile" "$0" && fail "PID files feature is broken" $ERROR_TEST_FAILURE
 
   # Normal situation.
-  writeMessage "Create properly a PID file for this process"
-  writePIDFile "$_pidFile" "$0" || testFail "PID files feature is broken" $ERROR_TEST_FAILURE
-  writeMessage "Trying to write in the existing PID file, must produce an ERROR"
-  writePIDFile "$_pidFile" "$0" && testFail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "Create properly a PID file for this process"
+  writePIDFile "$_pidFile" "$0" || fail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "Trying to write in the existing PID file, must produce an ERROR"
+  writePIDFile "$_pidFile" "$0" && fail "PID files feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "Check if system consider this process as still running"
-  isRunningProcess "$_pidFile" "$0" || testFail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "Check if system consider this process as still running"
+  isRunningProcess "$_pidFile" "$0" || fail "PID files feature is broken" $ERROR_TEST_FAILURE
 
-  writeMessage "Delete the PID file"
-  deletePIDFile "$_pidFile" || testFail "PID files feature is broken" $ERROR_TEST_FAILURE
+  info "Delete the PID file"
+  deletePIDFile "$_pidFile" || fail "PID files feature is broken" $ERROR_TEST_FAILURE
 
   # TODO: test checkAllProcessFromPIDFiles
 
@@ -356,7 +340,7 @@ function testPidFileFeature() {
 }
 
 # Tests Deaemon feature.
-function testDaemonFeature() {
+testDaemonFeature() {
   local _pidFile _daemonPath _daemonName _daemonCompletePath
   local _failureErrorMessage="Daemon feature is broken"
 
@@ -368,45 +352,33 @@ function testDaemonFeature() {
   _daemonCompletePath="$_daemonDirPath/$_daemonName"
 
   # Environment creation.
-  updateStructure "$_daemonDirPath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  rm -f "$_daemonCompletePath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  cp "$daemonSample" "$_daemonCompletePath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
-  chmod +x "$_daemonCompletePath" || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  updateStructure "$_daemonDirPath" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  rm -f "$_daemonCompletePath" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  cp "$daemonSample" "$_daemonCompletePath" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  chmod +x "$_daemonCompletePath" || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking the status of the Daemon ... expected result: NOT running"
-  "$_daemonCompletePath" -T || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking the status of the Daemon ... expected result: NOT running"
+  "$_daemonCompletePath" -T || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Requesting to stop the Daemon ... (warning can occur because of the process killing) expected result: NOT running"
-  "$_daemonCompletePath" -K || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Requesting to stop the Daemon ... (warning can occur because of the process killing) expected result: NOT running"
+  "$_daemonCompletePath" -K || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Starting the Daemon ..."
-  "$_daemonCompletePath" -S || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Starting the Daemon ..."
+  "$_daemonCompletePath" -S || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
   sleep 2
 
-  writeMessage "Checking the status of the Daemon ... expected result: running"
-  "$_daemonCompletePath" -T || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking the status of the Daemon ... expected result: running"
+  "$_daemonCompletePath" -T || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Requesting to stop the Daemon ... expected result: NOT running"
-  "$_daemonCompletePath" -K || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Requesting to stop the Daemon ... expected result: NOT running"
+  "$_daemonCompletePath" -K || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
-  writeMessage "Checking the status of the Daemon ... expected result: NOT running"
-  "$_daemonCompletePath" -T || testFail "$_failureErrorMessage" $ERROR_TEST_FAILURE
+  info "Checking the status of the Daemon ... expected result: NOT running"
+  "$_daemonCompletePath" -T || fail "$_failureErrorMessage" $ERROR_TEST_FAILURE
 
   unset PID_DIR
   exitingTests "daemon"
 }
 
-## Run tests.
-testLoggerFeature
-testLoggerRobustness
-testEnvironmentCheckFeature
-testConditionalBehaviour
-testVersionFeature
-testTimeFeature
-testCheckPathFeature
-testConfigurationFileFeature
-testPidFileFeature
-testLinesFeature
-testDaemonFeature
-
-writeMessage "All Tests are successful !"
+# Triggers shUnit 2.
+. "$currentDir/shunit2/shunit2"
