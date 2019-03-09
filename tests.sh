@@ -13,6 +13,9 @@ export LOG_CONSOLE_OFF=1
 [ -z "${SCRIPTS_COMMON_PATH:-}" ] && echo "SCRIPTS_COMMON_PATH environment variable must be defined." >&2 && exit 1
 . "$SCRIPTS_COMMON_PATH"
 
+# Disable Error Trap because tests will generate errors.
+trap '' ERR
+
 ## Defines some constants.
 currentDir=$( dirname "$( which "$0" )" )
 declare -r miscDir="$currentDir/misc"
