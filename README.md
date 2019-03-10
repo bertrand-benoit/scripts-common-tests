@@ -1,5 +1,4 @@
-scripts-common tester version 1.0
-====
+#scripts-common tester version 1.0
 [scripts-common](https://github.com/bertrand-benoit/scripts-common) is a free common utilities/tool-box for GNU/Bash scripts, you can use for your own scripts.
 
 This project aims to test it.
@@ -8,18 +7,24 @@ It was initially embedded in original repository.
 
 It was then removed to avoid to be checkout in all client projects.
 
+And eventually, it evolves to use [shUnit2](https://github.com/kward/shunit2).
 
-Usage
-====
-
-In all the following methods, you just need to source the utilities file.
+## Usage
+This version uses [shUnit2](https://github.com/kward/shunit2), so you cannot use CLI options; thus you must define the **SCRIPTS_COMMON_PATH** environment variable with the utilities version you want to test.
 ```
-tests.sh <path to define>/scripts-common/utilities.sh
+export SCRIPTS_COMMON_PATH="<path to define>/scripts-common/utilities.sh"
+./tests.sh
 ```
 
+## Contributing
+Don't hesitate to [contribute](https://opensource.guide/how-to-contribute/) or to contact me if you want to improve the project.
+You can [report issues or request features](https://github.com/bertrand-benoit/scripts-common-tests/issues) and propose [pull requests](https://github.com/bertrand-benoit/scripts-common-tests/pulls).
 
-Information
-====
-Don't hesitate to contribute or to contact me if you want to improve the script.
+## Versioning
+The versioning scheme we use is [SemVer](http://semver.org/).
 
-Bertrand BENOIT   <contact@bertrand-benoit.net>
+## Authors
+[Bertrand BENOIT](mailto:contact@bertrand-benoit.net)
+
+## License
+This project is under the GPLv3 License - see the [LICENSE](LICENSE) file for details
