@@ -2,7 +2,7 @@
 ##
 ## Author: Bertrand Benoit <mailto:contact@bertrand-benoit.net>
 ## Description: Tests all features provided by utilities script.
-## Version: 0.1
+## Version: 1.0
 
 #DEBUG_UTILITIES=1
 CATEGORY="tests:general"
