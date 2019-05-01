@@ -329,5 +329,20 @@ testDaemonFeature() {
   exitingTests "daemon"
 }
 
+testPatternMatchingFeature() {
+    local _pattern1="[My ]*f?irst[ pattern]*" _pattern2="[ \t][0-9][0-9]*[ \t]" _pattern3="^NoThing[ \t]*Void$"
+    declare -a patterns=( "$_pattern1" "$_pattern2" "$_pattern3")
+
+    enteringTests "patternMatching"
+
+    matchesOneOf "ShouldNotMatchAnything" "${patterns[@]}" && fail "Pattern matching should NOT have matched"
+    matchesOneOf "irst" "${patterns[@]}" || fail "Pattern matching should have matched with pattern 1"
+    matchesOneOf "Yeah this 56 tests should be OK" "${patterns[@]}" || fail "Pattern matching should have matched with pattern 2"
+    matchesOneOf "NoThingVoid" "${patterns[@]}" || fail "Pattern matching should have matched with pattern 3"
+    matchesOneOf "Thing" "${patterns[@]}" && fail "Pattern matching should NOT have matched"
+
+    exitingTests "patternMatching"
+}
+
 # Triggers shUnit 2.
 . "$currentDir/shunit2/shunit2"
