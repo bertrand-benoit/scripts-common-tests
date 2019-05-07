@@ -5,19 +5,20 @@
 ## Version: 1.0
 
 #DEBUG_UTILITIES=1
-CATEGORY="tests:general"
+export CATEGORY="tests:general"
 export ERROR_MESSAGE_EXITS_SCRIPT=0
 export LOG_CONSOLE_OFF=1
 
 # Ensures utilities path has been defined, and sources it.
 [ -z "${SCRIPTS_COMMON_PATH:-}" ] && echo "SCRIPTS_COMMON_PATH environment variable must be defined." >&2 && exit 1
+# shellcheck disable=1090
 . "$SCRIPTS_COMMON_PATH"
 
 # Disable Error Trap because tests will generate errors.
 trap '' ERR
 
 ## Defines some constants.
-currentDir=$( dirname "$( which "$0" )" )
+currentDir=$( dirname "$( command -v "$0" )" )
 declare -r miscDir="$currentDir/misc"
 declare -r daemonSample="$miscDir/daemonSample"
 
@@ -52,7 +53,7 @@ testLoggerFeature() {
 
 # Robustness Tests.
 testLoggerRobustness() {
-  local _logLevel _message _sameLine _exitStatus
+  local _logLevel _message _newLine _exitStatus
 
   enteringTests "robustness"
 
@@ -102,6 +103,7 @@ testConditionalBehaviour() {
   enteringTests "conditional"
 
   # Script should NOT break because of the pipe status ...
+  # shellcheck disable=2050
   [ 0 -gt 1 ] || info "fake test ..."
 
   exitingTests "conditional"
@@ -193,10 +195,12 @@ testCheckPathFeature() {
   assertEquals "$( buildCompletePath "$_subPathDir" "$_checkPathRootDir" 1 )" "$_checkPathRootDir/$_subPathDir" || fail "Checking buildCompletePath function on relative path with prepend option"
 
   # Special situation: HOME subsitution.
+  # "Tilde does not expand in quotes" => it is EXACTLY what we want here because it is the role of buildCompletePath function.
+  # shellcheck disable=2088
   assertEquals "$( buildCompletePath "~/$_homeRelativePath" )" "$HOME/$_homeRelativePath" || fail "Checking buildCompletePath function, for ~ substitution with HOME environment variable"
 
   # Very important to switch off this mode to keep on testing others features.
-  MODE_CHECK_CONFIG=0
+  export MODE_CHECK_CONFIG=0
 
   # checkAndFormatPath Tests.
   # N.B.: at end, use a wildcard instead of the ending 'ir' part.
@@ -205,7 +209,7 @@ testCheckPathFeature() {
   assertEquals "$( checkAndFormatPath "$_pathsToFormatBefore" "$_checkPathRootDir" )" "$_pathsToFormatAfter" || fail "Checking checkAndFormatPath function"
 
   # Very important to switch off this mode to keep on testing others features.
-  MODE_CHECK_CONFIG=0
+  export MODE_CHECK_CONFIG=0
 
   exitingTests "checkPath"
 }
@@ -221,7 +225,7 @@ testConfigurationFileFeature() {
   info "A configuration key '$CONFIG_NOT_FOUND' should happen."
 
   # To avoid error when configuration key is not found, switch on this mode.
-  MODE_CHECK_CONFIG=1
+  export MODE_CHECK_CONFIG=1
 
   # No configuration file defined, it should not be found.
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
@@ -231,17 +235,17 @@ testConfigurationFileFeature() {
 
   # Create a configuration file.
   info "Creating the temporary configuration file '$_configFile', and configuration key should then be found."
-cat > $_configFile <<EOF
+cat > "$_configFile" <<EOF
 $_configKey="$_configValue"
 EOF
 
-  CONFIG_FILE="$_configFile"
+  export CONFIG_FILE="$_configFile"
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
   info "$LAST_READ_CONFIG"
   assertEquals "$LAST_READ_CONFIG" "$_configValue" || fail "Configuration should have been found"
 
   # Very important to switch off this mode to keep on testing others features.
-  MODE_CHECK_CONFIG=0
+  export MODE_CHECK_CONFIG=0
 
   exitingTests "config"
 }
@@ -266,11 +270,10 @@ testLinesFeature() {
 
 # PID file feature Tests, without the Daemon layer which is tested elsewhere.
 testPidFileFeature() {
-  local _pidFile _processName
+  local _pidFile
   enteringTests "pidFiles"
 
   _pidFile="$DEFAULT_PID_DIR/testPidFileFeature.pid"
-  _processName="testPidFileFeature"
 
   # Limit tests, on not existing PID file.
   rm -f "$_pidFile"
@@ -297,7 +300,7 @@ testPidFileFeature() {
 
 # Tests Deaemon feature.
 testDaemonFeature() {
-  local _pidFile _daemonPath _daemonName _daemonCompletePath
+  local _pidFile _daemonDirPath _daemonName _daemonCompletePath
 
   enteringTests "daemon"
 
@@ -345,4 +348,5 @@ testPatternMatchingFeature() {
 }
 
 # Triggers shUnit 2.
+# shellcheck disable=1090
 . "$currentDir/shunit2/shunit2"
