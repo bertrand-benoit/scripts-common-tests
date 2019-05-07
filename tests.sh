@@ -217,6 +217,7 @@ testCheckPathFeature() {
 # Configuration file feature Tests.
 testConfigurationFileFeature() {
   local _configKey="my.config.key"
+  local _configKey2="another.config.key"
   local _configValue="my Value"
   local _configFile="$DEFAULT_TMP_DIR/localConfigurationFile.conf"
 
@@ -231,18 +232,36 @@ testConfigurationFileFeature() {
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
   assertEquals "$LAST_READ_CONFIG" "$CONFIG_NOT_FOUND" || fail "Configuration not found, badly detected"
 
+  [ -z "$( listConfigKeys )" ] || fail "Configuration key listing, with no pattern and no configuration file at all, should work"
+
   # TODO: check all other kind of $CONFIG_TYPE_XX
 
-  # Create a configuration file.
+  # Create a configuration file (including comment, and extra spaces which should be ignored).
   info "Creating the temporary configuration file '$_configFile', and configuration key should then be found."
 cat > "$_configFile" <<EOF
-$_configKey="$_configValue"
+#$_configKey="WRONG$_configValue"
+    $_configKey="$_configValue"
+#$_configKey="WRONG$_configValue"
+$_configKey2="$_configValue"
+#mustNotBeInList$_configKey="$_configValue"
 EOF
 
+  # Tests config key listing.
   export CONFIG_FILE="$_configFile"
+  declare -a expectedCompleteConfigKeyList=( "$_configKey2" "$_configKey" )
+  IFS= read -r -a readCompleteConfigKeyList <<< "$( listConfigKeys )"
+  assertEquals "${expectedCompleteConfigKeyList[*]}" "${readCompleteConfigKeyList[*]}" || fail "Configuration key listing, without pattern, should work"
+
+  assertEquals "$_configKey2" "$( listConfigKeys ".*${_configKey2:1:3}.*" )" || fail "Configuration key listing, with existing pattern, should work"
+
+  [ -z "$( listConfigKeys "doesNotExist" )" ] || fail "Configuration key listing, with NOT existing pattern, should not return anything"
+
+
+  # Tests checkAndSetConfig.
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
   info "$LAST_READ_CONFIG"
-  assertEquals "$LAST_READ_CONFIG" "$_configValue" || fail "Configuration should have been found"
+  assertEquals "$_configValue" "$LAST_READ_CONFIG" || fail "Configuration should have been found, and have good value"
+
 
   # Very important to switch off this mode to keep on testing others features.
   export MODE_CHECK_CONFIG=0
