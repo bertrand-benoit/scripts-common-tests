@@ -1,4 +1,7 @@
 # scripts-common tester version 1.0
+
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/8b02d9867667402890608cc3e924abc3)](https://app.codacy.com/app/bertrand-benoit/scripts-common-tests?utm_source=github.com&utm_medium=referral&utm_content=bertrand-benoit/scripts-common-tests&utm_campaign=Badge_Grade_Dashboard)
+
 [scripts-common](https://github.com/bertrand-benoit/scripts-common) is a free common utilities/tool-box for GNU/Bash scripts, you can use for your own scripts.
 
 This project aims to test it.
