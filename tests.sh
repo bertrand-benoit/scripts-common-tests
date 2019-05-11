@@ -219,6 +219,7 @@ testConfigurationFileFeature() {
   local _configKey="my.config.key"
   local _configKey2="another.config.key"
   local _configValue="my Value"
+  local _configValue2="my second Value"
   local _configFile="$DEFAULT_TMP_DIR/localConfigurationFile.conf"
 
   enteringTests "config"
@@ -232,23 +233,28 @@ testConfigurationFileFeature() {
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
   assertEquals "$LAST_READ_CONFIG" "$CONFIG_NOT_FOUND" || fail "Configuration not found, badly detected"
 
+  # TODO: check all other kind of $CONFIG_TYPE_XX
+
+  # Tests config keys listing, without any configuration file at all.
   [ -z "$( listConfigKeys )" ] || fail "Configuration key listing, with no pattern and no configuration file at all, should work"
 
-  # TODO: check all other kind of $CONFIG_TYPE_XX
+  # Tests config <key, value> listing, without any configuration file at all.
+  loadConfigKeyValueList
+  [ -z "${!LAST_READ_CONFIG_KEY_VALUE_LIST[*]}" ] || fail "Configuration <key, value> listing, with no pattern and no configuration file at all, should work"
 
   # Create a configuration file (including comment, and extra spaces which should be ignored).
   info "Creating the temporary configuration file '$_configFile', and configuration key should then be found."
+  export CONFIG_FILE="$_configFile"
 cat > "$_configFile" <<EOF
 #$_configKey="WRONG$_configValue"
     $_configKey="$_configValue"
 #$_configKey="WRONG$_configValue"
-$_configKey2="$_configValue"
+$_configKey2="$_configValue2"
 #mustNotBeInList$_configKey="$_configValue"
 EOF
 
   # Tests config key listing.
-  export CONFIG_FILE="$_configFile"
-  declare -a expectedCompleteConfigKeyList=( "$_configKey2" "$_configKey" )
+  declare -a expectedCompleteConfigKeyList=( "$_configKey" "$_configKey2" ) # N.B.: order is the one appearing in the file
   IFS= read -r -a readCompleteConfigKeyList <<< "$( listConfigKeys )"
   assertEquals "${expectedCompleteConfigKeyList[*]}" "${readCompleteConfigKeyList[*]}" || fail "Configuration key listing, without pattern, should work"
 
@@ -256,6 +262,38 @@ EOF
 
   [ -z "$( listConfigKeys "doesNotExist" )" ] || fail "Configuration key listing, with NOT existing pattern, should not return anything"
 
+  # Tests config <key, value> listing, with user configuration file, without pattern.
+  declare -A expectedCompleteConfigKeyValueList=( ["$_configKey"]="$_configValue" ["$_configKey2"]="$_configValue2" ) # N.B.: order is the one appearing in the file
+  loadConfigKeyValueList
+  #  Checks count of elements.
+  assertEquals "${#expectedCompleteConfigKeyValueList[@]}" "${#LAST_READ_CONFIG_KEY_VALUE_LIST[@]}" || fail "Configuration <key, value> listing, with no pattern, count of element is not GOOD"
+
+  #  Checks each existing element.
+  for configKey in "${!expectedCompleteConfigKeyValueList[@]}"; do
+    assertEquals "${expectedCompleteConfigKeyValueList[$configKey]}" "${LAST_READ_CONFIG_KEY_VALUE_LIST[$configKey]:-}" || fail "Configuration <key, value> listing, with no pattern, element not existing or different value"
+  done
+
+  # Tests config <key, value> listing, with user configuration file, with search pattern.
+  declare -A expectedCompleteConfigKeyValueList=( ["$_configKey2"]="$_configValue2" ) # N.B.: order is the one appearing in the file
+  loadConfigKeyValueList ".*${_configKey2:1:3}.*"
+  #  Checks count of elements.
+  assertEquals "${#expectedCompleteConfigKeyValueList[@]}" "${#LAST_READ_CONFIG_KEY_VALUE_LIST[@]}" || fail "Configuration <key, value> listing, with search pattern, count of element is not GOOD"
+
+  #  Checks each existing element.
+  for configKey in "${!expectedCompleteConfigKeyValueList[@]}"; do
+    assertEquals "${expectedCompleteConfigKeyValueList[$configKey]}" "${LAST_READ_CONFIG_KEY_VALUE_LIST[$configKey]:-}" || fail "Configuration <key, value> listing, with search pattern, element not existing or different value"
+  done
+
+  # Tests config <key, value> listing, with user configuration file, with search and remove pattern.
+  declare -A expectedCompleteConfigKeyValueList=( ["${_configKey2:8}"]="$_configValue2" ) # N.B.: order is the one appearing in the file
+  loadConfigKeyValueList ".*${_configKey2:1:3}.*" "${_configKey2:0:8}"
+  #  Checks count of elements.
+  assertEquals "${#expectedCompleteConfigKeyValueList[@]}" "${#LAST_READ_CONFIG_KEY_VALUE_LIST[@]}" || fail "Configuration <key, value> listing, with search and key remove patterns, count of element is not GOOD"
+
+  #  Checks each existing element.
+  for configKey in "${!expectedCompleteConfigKeyValueList[@]}"; do
+    assertEquals "${expectedCompleteConfigKeyValueList[$configKey]}" "${LAST_READ_CONFIG_KEY_VALUE_LIST[$configKey]:-}" || fail "Configuration <key, value> listing, with search and key remove patterns, element not existing or different value"
+  done
 
   # Tests checkAndSetConfig.
   checkAndSetConfig "$_configKey" "$CONFIG_TYPE_OPTION"
