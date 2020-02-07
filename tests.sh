@@ -393,11 +393,48 @@ testPatternMatchingFeature() {
 
     enteringTests "patternMatching"
 
+    # matchesOneOf
     matchesOneOf "ShouldNotMatchAnything" "${patterns[@]}" && fail "Pattern matching should NOT have matched"
     matchesOneOf "irst" "${patterns[@]}" || fail "Pattern matching should have matched with pattern 1"
     matchesOneOf "Yeah this 56 tests should be OK" "${patterns[@]}" || fail "Pattern matching should have matched with pattern 2"
     matchesOneOf "NoThingVoid" "${patterns[@]}" || fail "Pattern matching should have matched with pattern 3"
     matchesOneOf "Thing" "${patterns[@]}" && fail "Pattern matching should NOT have matched"
+
+    # isNumber && isCompoundedNumber
+    isNumber "0" || fail "isNumber, bad answer on '0'"
+    isNumber "054" || fail "isNumber, bad answer on '054'"
+    isNumber "999999" || fail "isNumber, bad answer on '999999'"
+    isNumber "5-9" && fail "isNumber, bad answer on '5-9'"
+
+    isCompoundedNumber "0" || fail "isCompoundedNumber, bad answer on '0'"
+    isCompoundedNumber "054" || fail "isCompoundedNumber, bad answer '054'"
+    isCompoundedNumber "999999" || fail "isCompoundedNumber, bad answer on '999999'"
+    isCompoundedNumber "5-9" || fail "isCompoundedNumber, bad answer on '5-9'"
+    isCompoundedNumber "30-098" || fail "isCompoundedNumber, bad answer on '30-098'"
+
+    # removeAllSpecifiedPartsFromString
+    local _string="NothingToChange"
+    local _result=$( removeAllSpecifiedPartsFromString "$_string" "$_pattern1|$_pattern2|$_pattern3" )
+    assertEquals "$_result" "$_string" || fail "removeAllSpecifiedPartsFromString failure on '$_string'"
+
+    local _string="MyFirstString"
+    local _result=$( removeAllSpecifiedPartsFromString "$_string" "$_pattern1|$_pattern2|$_pattern3" )
+    assertEquals "$_result" "MyFString" || fail "removeAllSpecifiedPartsFromString failure on '$_string' with case sensitive"
+    local _result=$( removeAllSpecifiedPartsFromString "$_string" "$_pattern1|$_pattern2|$_pattern3" "1")
+    assertEquals "$_result" "String" || fail "removeAllSpecifiedPartsFromString failure on '$_string' with case insensitive"
+
+    local _string="MyFirstString 999999 "
+    local _result=$( removeAllSpecifiedPartsFromString "$_string" "$_pattern1|$_pattern2|$_pattern3" "1" )
+    assertEquals "$_result" "String" || fail "removeAllSpecifiedPartsFromString failure on '$_string'"
+
+    # extractNumberSequence
+    assertEquals "$( extractNumberSequence "LotsOfUselessThings_2_AndSomeMore.myExtension")" "2" || fail "extractNumberSequence failure on '2'"
+    assertEquals "$( extractNumberSequence "LotsOfUselessThings.3.AndSomeMore.myExtension")" "3" || fail "extractNumberSequence failure on '3'"
+    assertEquals "$( extractNumberSequence "LotsOfUselessThings.E5.AndSomeMore.myExtension")" "5" || fail "extractNumberSequence failure on '5'"
+    assertEquals "$( extractNumberSequence "LotsOfUselessThings.7-9.AndSomeMore.myExtension")" "7-9" || fail "extractNumberSequence failure on '7-9'"
+    assertEquals "$( extractNumberSequence "LotsOfUselessThings.11 à 13.AndSomeMore.myExtension")" "11-13" || fail "extractNumberSequence failure on '11-13'"
+    assertEquals "$( extractNumberSequence "LotsOfUselessThings.17 & 19.AndSomeMore.myExtension")" "17-19" || fail "extractNumberSequence failure on '17-19'"
+    assertEquals "$( extractNumberSequence "LotsOfUselessThings29-29AndSomeMore.myExtension")" "29-29" || fail "extractNumberSequence failure on '29-29'"
 
     exitingTests "patternMatching"
 }
