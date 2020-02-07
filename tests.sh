@@ -6,6 +6,7 @@
 
 #DEBUG_UTILITIES=1
 export CATEGORY="tests:general"
+export DISABLE_ERROR_TRAP=1
 export ERROR_MESSAGE_EXITS_SCRIPT=0
 export LOG_CONSOLE_OFF=1
 
@@ -13,9 +14,6 @@ export LOG_CONSOLE_OFF=1
 [ -z "${SCRIPTS_COMMON_PATH:-}" ] && echo "SCRIPTS_COMMON_PATH environment variable must be defined." >&2 && exit 1
 # shellcheck disable=1090
 . "$SCRIPTS_COMMON_PATH"
-
-# Disable Error Trap because tests will generate errors.
-trap '' ERR
 
 ## Defines some constants.
 currentDir=$( dirname "$( command -v "$0" )" )
