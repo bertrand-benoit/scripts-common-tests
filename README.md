@@ -1,5 +1,7 @@
+:warning: This project is now hosted on [Gitlab](https://gitlab.com/bertrand-benoit/scripts-common-tests); switch to it to get newer versions.
+
 # scripts-common tester version 1.0
-[scripts-common](https://github.com/bertrand-benoit/scripts-common) is a free common utilities/tool-box for GNU/Bash scripts, you can use for your own scripts.
+[scripts-common](https://gitlab.com/bertrand-benoit/scripts-common) is a free common utilities/tool-box for GNU/Bash scripts, you can use for your own scripts.
 
 This project aims to test it.
 
@@ -18,7 +20,7 @@ export SCRIPTS_COMMON_PATH="<path to define>/scripts-common/utilities.sh"
 
 ## Contributing
 Don't hesitate to [contribute](https://opensource.guide/how-to-contribute/) or to contact me if you want to improve the project.
-You can [report issues or request features](https://github.com/bertrand-benoit/scripts-common-tests/issues) and propose [pull requests](https://github.com/bertrand-benoit/scripts-common-tests/pulls).
+You can [report issues or request features](https://gitlab.com/bertrand-benoit/scripts-common-tests/issues) and propose [merge requests](https://gitlab.com/bertrand-benoit/scripts-common-tests/merge_requests).
 
 ## Versioning
 The versioning scheme we use is [SemVer](http://semver.org/).
